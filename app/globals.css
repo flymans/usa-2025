@@ -1,0 +1,39 @@
+:root { --paper:#f7f6f1; --ink:#161616; --muted:#73736f; --hairline:#c9c8c1; }
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:Arial,Helvetica,sans-serif; }
+button { font: inherit; }
+.journey { min-height:100svh; display:grid; grid-template-rows:auto 1fr auto; overflow:hidden; padding:28px clamp(20px,4vw,64px) 24px; }
+.masthead,.footnote { display:flex; align-items:baseline; justify-content:space-between; gap:24px; position:relative; z-index:2; }
+.eyebrow,.counter,.footnote { font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; }
+.counter,.footnote { color:var(--muted); }
+.title { margin:8px 0 0; font:400 clamp(38px,5.5vw,84px)/.9 Georgia,"Times New Roman",serif; letter-spacing:-.055em; }
+.mapStage { min-height:520px; position:relative; display:grid; place-items:center; }
+.mapSvg { width:min(1320px,98vw); height:auto; overflow:visible; }
+.state { fill:var(--paper); stroke:var(--hairline); stroke-width:.8; transition:fill .15s ease; vector-effect:non-scaling-stroke; }
+.state:hover { fill:#e8e7e1; }
+.nationOutline { fill:transparent; stroke:var(--ink); stroke-width:1.6; pointer-events:none; vector-effect:non-scaling-stroke; }
+.route { fill:none; stroke:var(--ink); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:1 7; pointer-events:none; vector-effect:non-scaling-stroke; }
+.stop { cursor:pointer; }
+.stop circle { fill:var(--paper); stroke:var(--ink); stroke-width:1.5; transition:fill .2s ease,transform .2s ease; transform-box:fill-box; transform-origin:center; vector-effect:non-scaling-stroke; }
+.stop text { fill:var(--ink); font:700 10px Arial,sans-serif; text-anchor:middle; dominant-baseline:central; pointer-events:none; }
+.stop:hover circle,.stop:focus circle,.stopActive circle { fill:var(--ink); transform:scale(1.14); }
+.stop:hover text,.stop:focus text,.stopActive text { fill:var(--paper); }
+.stop:focus { outline:none; }
+.stateTooltip { position:fixed; z-index:10; pointer-events:none; padding:7px 9px 6px; border:1px solid var(--ink); background:var(--paper); color:var(--ink); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; white-space:nowrap; }
+.storyCard { position:absolute; right:clamp(0px,2vw,36px); bottom:clamp(18px,5vh,70px); width:min(330px,38vw); padding:20px 0 0 28px; border-left:1px solid var(--ink); background:linear-gradient(90deg,var(--paper) 78%,transparent); }
+.storyIndex { color:var(--muted); font-size:10px; letter-spacing:.16em; }
+.storyCard h2 { margin:8px 0; font:400 30px/1 Georgia,"Times New Roman",serif; }
+.storyCard p { margin:0; max-width:28ch; color:var(--muted); font-size:13px; line-height:1.5; }
+.footnote { padding-top:8px; }
+.footnote span:last-child { text-align:right; }
+@media (max-width:720px) {
+  .journey { padding:20px 16px 18px; overflow:auto; }
+  .masthead { align-items:flex-start; }
+  .title { font-size:clamp(42px,13vw,62px); }
+  .mapStage { min-height:610px; display:block; padding-top:56px; }
+  .mapSvg { width:155%; margin-left:-27%; }
+  .storyCard { left:0; right:0; bottom:12px; width:auto; padding:16px 18px; border:1px solid var(--ink); background:var(--paper); }
+  .footnote span:last-child { display:none; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none!important; } }
