@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "deploy": "bash scripts/deploy.sh",
     "start": "next start"
   },
   "dependencies": {
