@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { feature, merge } from "topojson-client";
 import states from "us-atlas/states-10m.json";
@@ -53,10 +53,17 @@ const stateNames: Record<string,string> = {
 
 type HoveredState = { name:string; x:number; y:number } | null;
 type StatePath = { id:string; name:string; path:string };
+type MapTransform = { scale:number; x:number; y:number };
+
+const clampScale = (scale:number) => Math.min(4,Math.max(1,scale));
 
 export function UsaJourney() {
   const [activeId,setActiveId] = useState(stops[0].id);
   const [hoveredState,setHoveredState] = useState<HoveredState>(null);
+  const [mapTransform,setMapTransform] = useState<MapTransform>({ scale:1, x:0, y:0 });
+  const pointers = useRef(new Map<number,{ x:number; y:number }>());
+  const gesture = useRef<{ distance:number; scale:number; x:number; y:number } | null>(null);
+  const lastPointer = useRef<{ x:number; y:number } | null>(null);
   const active = stops.find((stop) => stop.id === activeId) ?? stops[0];
   const map = useMemo(() => {
     const projection = geoAlbersUsa().translate([600,350]).scale(1300);
@@ -79,6 +86,13 @@ export function UsaJourney() {
     };
   },[]);
   const routePath = `M ${map.routePositions.map(([x,y]) => `${x.toFixed(1)} ${y.toFixed(1)}`).join(" L ")}`;
+  const zoomBy = (factor:number) => setMapTransform((current) => {
+    const scale = clampScale(current.scale * factor);
+    if (scale === 1) return { scale:1, x:0, y:0 };
+    const ratio = scale / current.scale;
+    return { scale, x:600-(600-current.x)*ratio, y:350-(350-current.y)*ratio };
+  });
+  const resetMap = () => setMapTransform({ scale:1, x:0, y:0 });
 
   return <main className="journey">
     <header className="masthead">
@@ -86,10 +100,46 @@ export function UsaJourney() {
       <div className="counter">6 октября — 3 ноября · 6 047 GPS-точек</div>
     </header>
     <section className="mapStage" aria-label="Схема путешествия по США">
-      <svg className="mapSvg" viewBox="80 55 1040 590" role="img" aria-labelledby="map-title map-description">
+      <svg className="mapSvg" viewBox="80 55 1040 590" role="img" aria-labelledby="map-title map-description"
+        onWheel={(event) => { event.preventDefault(); zoomBy(event.deltaY < 0 ? 1.2 : 1 / 1.2); }}
+        onPointerDown={(event) => {
+          event.currentTarget.setPointerCapture(event.pointerId);
+          pointers.current.set(event.pointerId,{ x:event.clientX, y:event.clientY });
+          lastPointer.current = { x:event.clientX, y:event.clientY };
+          if (pointers.current.size === 2) {
+            const [first,second] = [...pointers.current.values()];
+            gesture.current = { distance:Math.hypot(second.x-first.x,second.y-first.y), ...mapTransform };
+          }
+        }}
+        onPointerMove={(event) => {
+          if (!pointers.current.has(event.pointerId)) return;
+          const previous = pointers.current.get(event.pointerId)!;
+          pointers.current.set(event.pointerId,{ x:event.clientX, y:event.clientY });
+          if (pointers.current.size === 2 && gesture.current) {
+            const [first,second] = [...pointers.current.values()];
+            const distance = Math.hypot(second.x-first.x,second.y-first.y);
+            const scale = clampScale(gesture.current.scale * distance / gesture.current.distance);
+            const ratio = scale / gesture.current.scale;
+            setMapTransform({ scale, x:600-(600-gesture.current.x)*ratio, y:350-(350-gesture.current.y)*ratio });
+          } else if (mapTransform.scale > 1) {
+            const unitsPerPixel = 1040 / event.currentTarget.getBoundingClientRect().width;
+            setMapTransform((current) => ({ ...current, x:current.x + (event.clientX-previous.x)*unitsPerPixel, y:current.y + (event.clientY-previous.y)*unitsPerPixel }));
+          }
+          lastPointer.current = { x:event.clientX, y:event.clientY };
+        }}
+        onPointerUp={(event) => {
+          pointers.current.delete(event.pointerId);
+          gesture.current = null;
+          lastPointer.current = null;
+        }}
+        onPointerCancel={(event) => {
+          pointers.current.delete(event.pointerId);
+          gesture.current = null;
+          lastPointer.current = null;
+        }}>
         <title id="map-title">Карта путешествия по США</title>
         <desc id="map-description">GPS-маршрут путешествия по континентальным США с девятнадцатью остановками.</desc>
-        <g>
+        <g transform={`translate(${mapTransform.x} ${mapTransform.y}) scale(${mapTransform.scale})`}>
           {map.statePaths.map((state:StatePath) => <path className="state" d={state.path} key={state.id}
             onPointerEnter={(event) => setHoveredState({ name:state.name, x:event.clientX, y:event.clientY })}
             onPointerMove={(event) => setHoveredState({ name:state.name, x:event.clientX, y:event.clientY })}
@@ -97,7 +147,6 @@ export function UsaJourney() {
           <path className="nationOutline" d={map.nation} aria-hidden="true"/>
           <path className="routeHalo" d={routePath} aria-hidden="true"/>
           <path className="route" d={routePath} aria-hidden="true"/>
-        </g>
         {stops.map((stop,index) => {
           const [anchorX,anchorY] = map.positions[index];
           const [offsetX,offsetY] = stop.markerOffset ?? [0,0];
@@ -122,7 +171,13 @@ export function UsaJourney() {
             {stop.role && <text className="stopRole" y="30">{stop.role === "start" ? "СТАРТ" : "ФИНИШ"}</text>}
           </g>;
         })}
+        </g>
       </svg>
+      <div className="mapControls" aria-label="Масштаб карты">
+        <button type="button" onClick={() => zoomBy(1.35)} aria-label="Приблизить карту">+</button>
+        <button type="button" onClick={() => zoomBy(1/1.35)} aria-label="Отдалить карту">−</button>
+        <button type="button" className="mapReset" onClick={resetMap} disabled={mapTransform.scale === 1} aria-label="Сбросить масштаб">1:1</button>
+      </div>
       {hoveredState && <div className="stateTooltip" style={{ left:hoveredState.x + 14, top:hoveredState.y + 14 }}>{hoveredState.name}</div>}
       <aside className="storyCard" aria-live="polite"><div className="storyIndex">Остановка {active.number}</div><h2>{active.title}</h2><p>{active.note}</p></aside>
     </section>
