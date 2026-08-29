@@ -1,4 +1,4 @@
-import { UsaJourney } from "./usa-journey";
+import { UsaJourney } from ".";
 
 export default function Home() {
   return <UsaJourney />;

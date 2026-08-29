@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 const [input, output] = process.argv.slice(2);
 
 if (!input || !output) {
-  console.error("Usage: node scripts/extract-timeline.mjs <timeline.json> <output.ts>");
+  console.error("Usage: node scripts/extract-timeline.mjs <timeline.json> <output.json>");
   process.exit(1);
 }
 
@@ -21,7 +21,8 @@ for (const segment of timeline.semanticSegments ?? []) {
 
     const latitude = Number(match[1]);
     const longitude = Number(match[2]);
-    const isContinentalUs = latitude >= 24 && latitude <= 50 && longitude >= -125 && longitude <= -66;
+    const isContinentalUs =
+      latitude >= 24 && latitude <= 50 && longitude >= -125 && longitude <= -66;
     if (!isContinentalUs) continue;
 
     points.push({ time: entry.time, coordinates: [longitude, latitude] });
@@ -31,9 +32,5 @@ for (const segment of timeline.semanticSegments ?? []) {
 points.sort((left, right) => left.time.localeCompare(right.time));
 const coordinates = points.map((point) => point.coordinates);
 
-const source = `// Generated from a private Google Timeline export. The original export is not committed.\n` +
-  `// Continental US only, 2025-10-06 through 2025-11-03 inclusive.\n` +
-  `export const routeCoordinates: ReadonlyArray<readonly [number, number]> = ${JSON.stringify(coordinates)};\n`;
-
-writeFileSync(output, source);
+writeFileSync(output, `${JSON.stringify(coordinates)}\n`);
 console.log(`Wrote ${coordinates.length} GPS points to ${output}`);
